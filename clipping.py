@@ -1,5 +1,5 @@
 """
-    NEWS READER — Busca notícias recentes sobre temas diversos, usando a NewsAPI.
+    CLIPPING — Busca notícias recentes sobre temas diversos, usando a NewsAPI.
 """
 import requests
 import configparser
