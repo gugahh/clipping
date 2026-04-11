@@ -2,7 +2,7 @@
 Aplicativo de clipping, que consome matérias de *NewsAPI.org*.
 
 Realiza a tradução automaticamente dos artigos do inglês para o português do Brasil.
-Os assuntos são configuráveis (editando *clipping.py*).
+Os assuntos são configuráveis (editando *clipping.py*). Utiliza o argostranslate para traduzir.
 
 Para executar, apenas clique em **clipping.bat** (no Windows).
 

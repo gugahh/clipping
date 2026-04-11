@@ -65,9 +65,10 @@ def main():
     assuntos = [
         {'titulo': 'One Health', 'query': '"World Health Organization"+"One Health"'},
         {'titulo': 'Artificial Intelligence UAE', 'query': '"Artificial Intelligence"+UAE'},
-        #{'titulo': 'BRICS Bank', 'query': '"BRICS Bank"'},
-        {'titulo': 'Rare Earths - Brazil', 'query': '+"Rare Earths"+Brazil'},
+        #{'titulo': 'Banco Islâmico de Desenvolvimento', 'query': '"Islamic Development Bank"'},
+        {'titulo': 'Terras Raras - Brazil', 'query': '+"Rare Earths"+Brazil'},
         {'titulo': 'Belt and Road', 'query': '"Belt and Road"'},
+        {'titulo': 'ASEAN', 'query': 'ASEAN'},
         #{'titulo': 'Bangladesh', 'query': '"Bangladesh"'},
     ]
 
@@ -147,7 +148,7 @@ def main():
                     if(esteArtigo['autor'] != None and len(esteArtigo['autor']) > 70): 
                         esteArtigo['autor'] = esteArtigo['autor'][:70] + "..."  # Trunca o nome do autor se for muito longo 
                     else: 
-                        esteArtigo['autor'] = esteArtigo['autor'] if esteArtigo['autor'] != None else "Desconecido"
+                        esteArtigo['autor'] = esteArtigo['autor'] if esteArtigo['autor'] != None else "Desconhecido"
 
                     md_file.write(f"**Autor(es):** {esteArtigo['autor']}\n\n")  
                     md_file.write(f"**Publicado em:** {datetime.fromisoformat(esteArtigo['data_publicacao']).strftime(DATE_MASK_BR)}\n\n")
