@@ -1,10 +1,12 @@
 """
     CLIPPING — Busca notícias recentes sobre temas diversos, usando a NewsAPI.
 """
+import os
 import requests
 import configparser
 import traceback
 import sys
+import webbrowser
 from datetime import datetime, timedelta
 from includes_python.folder_utils import create_todays_folder
 
@@ -62,8 +64,8 @@ def main():
     assuntos = [
         {'titulo': 'One Health', 'query': '"World Health Organization"+"One Health"'},
         #{'titulo': 'Artificial Intelligence UAE', 'query': '"Artificial Intelligence"+UAE'},
-        #{'titulo': 'Rare Earths - Brazil', 'query': '+"Rare Earths"+Brazil'},
-        #{'titulo': 'BRICS Bank', 'query': '"BRICS Bank"'},
+        {'titulo': 'Rare Earths - Brazil', 'query': '+"Rare Earths"+Brazil'},
+        {'titulo': 'BRICS Bank', 'query': '"BRICS Bank"'},
         #{'titulo': 'Belt and Road', 'query': '"Belt and Road"'},
         #{'titulo': 'Bangladesh', 'query': '"Bangladesh"'},
     ]
@@ -155,6 +157,7 @@ def main():
                     # armazenando em uma lista de artigos, para uso futuro.
                     artigos.append(esteArtigo)
             md_file.close()
+            webbrowser.open(f'file://{os.getcwd()}/{nome_arquivo}')  # Abre o arquivo markdown gerado no navegador padrão
 
 
                 #print(f"\nArtigo: {esteArtigo}\n\n")
