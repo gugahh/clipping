@@ -9,6 +9,7 @@ import sys
 import webbrowser
 from datetime import datetime, timedelta
 from includes_python.folder_utils import create_todays_folder
+from includes_python.argo_translator import verifica_pacotes_linguagem, translate_en_to_pt
 
 # ── Constants ────────────────────────────────────────────────────────────────
 
@@ -63,13 +64,15 @@ def main():
     # Aqui sao definidos os assuntos desejados, separados por virgula.  Use aspas para frases exatas, como "One Health"
     assuntos = [
         {'titulo': 'One Health', 'query': '"World Health Organization"+"One Health"'},
-        #{'titulo': 'Artificial Intelligence UAE', 'query': '"Artificial Intelligence"+UAE'},
-        {'titulo': 'BRICS Bank', 'query': '"BRICS Bank"'},
-        #{'titulo': 'Rare Earths - Brazil', 'query': '+"Rare Earths"+Brazil'},
+        {'titulo': 'Artificial Intelligence UAE', 'query': '"Artificial Intelligence"+UAE'},
+        #{'titulo': 'BRICS Bank', 'query': '"BRICS Bank"'},
+        {'titulo': 'Rare Earths - Brazil', 'query': '+"Rare Earths"+Brazil'},
         {'titulo': 'Belt and Road', 'query': '"Belt and Road"'},
         #{'titulo': 'Bangladesh', 'query': '"Bangladesh"'},
     ]
 
+    print(f"\tPreparando o tradutor de inglês para português... ")  
+    verifica_pacotes_linguagem()
 
     #query = '"One Health","World Health Organization",'  # Use aspas para frases exatas , como: "BRICS Bank","Belt and Road",', ,"Bangladesh","Qatar" , "Iran","India","China"
     # query = ',"Artificial Intelligence",UAE'  # Use aspas para frases exatas , como: "BRICS Bank","Belt and Road",', ,"Bangladesh","Qatar" , "Iran","India","China"
@@ -121,23 +124,22 @@ def main():
                 md_file.write("---\n\n")
 
                 for idx, article in enumerate(data['articles'], start=1):
-                    if (idx == 1):
-                        """
-                        # Exibindo o artigo 1, unicamente.
-                        print(f"-- ({idx}) ---------------------------------------------")
-                        print(f"Titulo: {article['title']}")
-                        print(f"Descrição: {article['description']}")
-                        print(f"Publicado em: {datetime.fromisoformat(article['publishedAt']).strftime(DATE_MASK_BR)}\n")
-                        print(f"Fonte: {article['source']['name']}")
-                        print(f"{article['urlToImage']}")
-                        print(f"URL: {article['url']}\n")
-                        """
 
                     esteArtigo = {'titulo': article['title'], 'descricao': article['description'], 'autor': article['author'], 'data_publicacao': article['publishedAt'], 'fonte': article['source']['name'], 'url_artigo': article['url'], 'url_imagem': article['urlToImage'], 'conteudo': article['content'], 'dt_publicacao': article['publishedAt']}
 
+                    # Efetuando traducoes para português, usando o argostranslate.
+                    esteArtigo['titulo_traduzido'] = "(Sem Título)" if esteArtigo['titulo'] == None else translate_en_to_pt(esteArtigo['titulo']) 
+                    esteArtigo['descricao_traduzida'] = "(Sem Descrição)" if esteArtigo['descricao'] == None else translate_en_to_pt(esteArtigo['descricao'])   
+                    esteArtigo['conteudo_traduzido']  = "(Sem Conteúdo)"
+                    if esteArtigo['conteudo'] != None:
+                        # O conteúdo frequentemente tem uma parte truncada, seguida de um link para o artigo completo. Vamos tentar traduzir apenas a parte inicial, para evitar erros de tradução.
+                        partes = esteArtigo['conteudo_traduzido'].split('…')
+                        parte_traduzida = translate_en_to_pt(partes[0])  # Traduz apenas a primeira parte
+                        esteArtigo['conteudo_traduzido'] = parte_traduzida + ('…' + partes[1] if len(partes) > 1 else '')  # Reconstroi o conteúdo com a parte traduzida
+
                     #gravando cada um dos artigos no arquivo markdown, 
-                    md_file.write(f"## {idx}. {esteArtigo['titulo']}\n\n")
-                    md_file.write(f"**Descrição:** {esteArtigo['descricao']}\n\n")
+                    md_file.write(f"## {idx}. {esteArtigo['titulo_traduzido']}\n\n")
+                    md_file.write(f"**Descrição:** {esteArtigo['descricao_traduzida']}\n\n")
                     if esteArtigo['url_imagem'] != None:
                         md_file.write(f"![]({esteArtigo['url_imagem']})\n\n")
 
@@ -151,7 +153,7 @@ def main():
                     md_file.write(f"**Publicado em:** {datetime.fromisoformat(esteArtigo['data_publicacao']).strftime(DATE_MASK_BR)}\n\n")
                     md_file.write(f"**Fonte:** {esteArtigo['fonte']}\n\n")
                     md_file.write(f"**URL:** {esteArtigo['url_artigo']}\n\n")
-                    md_file.write(f"**Conteúdo:** {esteArtigo['conteudo']}\n\n")
+                    md_file.write(f"**Conteúdo:** {esteArtigo['conteudo_traduzido']}\n\n")
                     md_file.write("---\n\n")
 
                     # armazenando em uma lista de artigos, para uso futuro.
