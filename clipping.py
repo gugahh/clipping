@@ -6,6 +6,7 @@ import configparser
 import traceback
 import sys
 from datetime import datetime, timedelta
+from includes_python.folder_utils import create_todays_folder
 
 # ── Constants ────────────────────────────────────────────────────────────────
 
@@ -51,57 +52,118 @@ def main():
     print(f"\tapi_key: \t\t\t{"(Atribuida)" if api_key != None else "(Nao Atribuida)"}")
     print(f"\tnum_dias_recuo: \t\t{num_dias_recuo}")
 
+    print(f"\nCriando pasta para hoje... ")
+    pastaHoje = create_todays_folder()
+
     dataInicio = (datetime.now() - timedelta(days=int(num_dias_recuo))) #Datetime
     print(f"\tData de Inicio da busca: \t{dataInicio.strftime(DATE_MASK_BR_SHORT)}")  
 
-    # Aqui ficarao armazenados todos os artigos, de todas as buscas.  
-    # Cada artigo é um dict com as chaves: titulo, descricao, autor, data_publicacao, fonte, url_artigo, url_imagem, content
-    artigos = []
-
     # Aqui sao definidos os assuntos desejados, separados por virgula.  Use aspas para frases exatas, como "One Health"
+    assuntos = [
+        {'titulo': 'One Health', 'query': '"World Health Organization"+"One Health"'},
+        #{'titulo': 'Artificial Intelligence UAE', 'query': '"Artificial Intelligence"+UAE'},
+        #{'titulo': 'Rare Earths - Brazil', 'query': '+"Rare Earths"+Brazil'},
+        #{'titulo': 'BRICS Bank', 'query': '"BRICS Bank"'},
+        #{'titulo': 'Belt and Road', 'query': '"Belt and Road"'},
+        #{'titulo': 'Bangladesh', 'query': '"Bangladesh"'},
+    ]
+
+
     #query = '"One Health","World Health Organization",'  # Use aspas para frases exatas , como: "BRICS Bank","Belt and Road",', ,"Bangladesh","Qatar" , "Iran","India","China"
     # query = ',"Artificial Intelligence",UAE'  # Use aspas para frases exatas , como: "BRICS Bank","Belt and Road",', ,"Bangladesh","Qatar" , "Iran","India","China"
     #query = '"Rare Earths"+Brazil'
-    query = '"World Health Organization"+"One Health"'
+    #query = '"World Health Organization"+"One Health"'
 
-    # 2. Query Parameters
-    params = {
-        'q': query ,
-        #'sortBy': 'publishedAt', # Criterio: mais recente
-        'sortBy':'popularity' ,
-        'language': 'en',
-        'from': dataInicio.strftime(DATE_MASK_NEWS),  # Data no formato '2026-04-07'
-        'apiKey': api_key
-    }
+    # Processando cada um dos assuntos definidos;
+    # Para cada assunto sera gerado um arquivo Markdown.
+    for assunto in assuntos:
+        titulo = assunto['titulo']
+        query = assunto['query']
 
-    # 3. Request
-    response = requests.get(url, params=params)
-    data = response.json()
-    #print(data)
-    print(f"\n\tQuery: {query}\n")
-    print(f"\tQuantidade de Artigos: {data['totalResults']}\n")
+        # Aqui ficarao armazenados todos os artigos, do assunto atual.
+        # Cada artigo é um dict com as chaves: titulo, descricao, autor, data_publicacao, fonte, url_artigo, url_imagem, content
+        artigos = []
 
-    # 4. Print Results
-    if data['status'] == 'ok':
-        for idx, article in enumerate(data['articles'], start=1):
-            print(f"-- ({idx}) ---------------------------------------------")
-            print(f"Titulo: {article['title']}")
-            print(f"Descrição: {article['description']}")
-            print(f"Publicado em: {datetime.fromisoformat(article['publishedAt']).strftime(DATE_MASK_BR)}\n")
-            print(f"Fonte: {article['source']['name']}")
-            print(f"imagem: {article['urlToImage']}")
-            print(f"URL: {article['url']}\n")
+        print(f'\n>> Buscando por: "{titulo}"...')
 
-            esteArtigo = {'titulo': article['title'], 'descricao': article['description'], 'autor': article['author'], 'data_publicacao': article['publishedAt'], 'fonte': article['source']['name'], 'url_artigo': article['url'], 'url_imagem': article['urlToImage'], 'conteudo': article['content'], 'dt_publicacao': article['publishedAt']}
-            artigos.append(esteArtigo)
+        # 2. Query Parameters
+        params = {
+            'q': query ,
+            #'sortBy': 'publishedAt', # Criterio: mais recente
+            'sortBy':'popularity' ,
+            'language': 'en',
+            'from': dataInicio.strftime(DATE_MASK_NEWS),  # Data no formato '2026-04-07'
+            'apiKey': api_key
+        }
 
-            #print(f"\nArtigo: {esteArtigo}\n\n")
-            # 'data_publicacao': datetime.fromisoformat(article['publishedAt']).strftime(DATE_MASK_BR)
-            #print(f"\nJSON: {article}\n\n")
+        # 3. Request
+        response = requests.get(url, params=params)
+        data = response.json()
+        #print(data)
+        print(f"\tQuery: {query}")
+        if (data['totalResults'] > 0):
+            print(f"\tQuantidade de Artigos: {data['totalResults']}\n")
+        else:
+            print(f"\tNenhum artigo encontrado.\n")
 
-        print(f"\nQuantidade de Artigos: {data['totalResults']}\n")
-    else:
-        print("Error:", data.get('message'))
+        # 4. Print Results
+        if data['status'] == 'ok':
+
+            # Criando o arquivo markdown para o assunto atual, dentro da pasta de hoje.
+            nome_arquivo = f"{pastaHoje}/{titulo.replace(' ', '_')}.md"
+            with open(nome_arquivo, "w", encoding="utf-8") as md_file:
+                md_file.write(f"# {titulo}\n\n")
+                md_file.write(f"_Gerado em: {now_str()}_\n\n")
+                md_file.write(f"_Query: {query}_\n\n")
+                md_file.write(f"_Total de Artigos: {data['totalResults']}_\n\n")
+                md_file.write("---\n\n")
+
+                for idx, article in enumerate(data['articles'], start=1):
+                    if (idx == 1):
+                        """
+                        # Exibindo o artigo 1, unicamente.
+                        print(f"-- ({idx}) ---------------------------------------------")
+                        print(f"Titulo: {article['title']}")
+                        print(f"Descrição: {article['description']}")
+                        print(f"Publicado em: {datetime.fromisoformat(article['publishedAt']).strftime(DATE_MASK_BR)}\n")
+                        print(f"Fonte: {article['source']['name']}")
+                        print(f"{article['urlToImage']}")
+                        print(f"URL: {article['url']}\n")
+                        """
+
+                    esteArtigo = {'titulo': article['title'], 'descricao': article['description'], 'autor': article['author'], 'data_publicacao': article['publishedAt'], 'fonte': article['source']['name'], 'url_artigo': article['url'], 'url_imagem': article['urlToImage'], 'conteudo': article['content'], 'dt_publicacao': article['publishedAt']}
+
+                    #gravando cada um dos artigos no arquivo markdown, 
+                    md_file.write(f"## {idx}. {esteArtigo['titulo']}\n\n")
+                    md_file.write(f"**Descrição:** {esteArtigo['descricao']}\n\n")
+                    if esteArtigo['url_imagem'] != None:
+                        md_file.write(f"![]({esteArtigo['url_imagem']})\n\n")
+
+                    # Autor pode ser uma lista longa. Tratando nomes longos demais.
+                    if(esteArtigo['autor'] != None and len(esteArtigo['autor']) > 70): 
+                        esteArtigo['autor'] = esteArtigo['autor'][:70] + "..."  # Trunca o nome do autor se for muito longo 
+                    else: 
+                        esteArtigo['autor'] = esteArtigo['autor'] if esteArtigo['autor'] != None else "Desconecido"
+
+                    md_file.write(f"**Autor(es):** {esteArtigo['autor']}\n\n")  
+                    md_file.write(f"**Publicado em:** {datetime.fromisoformat(esteArtigo['data_publicacao']).strftime(DATE_MASK_BR)}\n\n")
+                    md_file.write(f"**Fonte:** {esteArtigo['fonte']}\n\n")
+                    md_file.write(f"**URL:** {esteArtigo['url_artigo']}\n\n")
+                    md_file.write(f"**Conteúdo:** {esteArtigo['conteudo']}\n\n")
+                    md_file.write("---\n\n")
+
+                    # armazenando em uma lista de artigos, para uso futuro.
+                    artigos.append(esteArtigo)
+            md_file.close()
+
+
+                #print(f"\nArtigo: {esteArtigo}\n\n")
+                # 'data_publicacao': datetime.fromisoformat(article['publishedAt']).strftime(DATE_MASK_BR)
+                #print(f"\nJSON: {article}\n\n")
+
+            #print(f"\nQuantidade de Artigos: {data['totalResults']}\n")
+        else:
+            print("Error:", data.get('message'))
 
     #print(f"\nArtigos:")
     #print(artigos)
