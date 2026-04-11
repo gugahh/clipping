@@ -14,5 +14,5 @@ def create_todays_folder() -> str:
     # This works for both the base directory and the dated subdirectory.
     os.makedirs(target_path, exist_ok=True)
     
-    print(f"Pasta Criada: {target_path}")
+    #print(f"Pasta Criada: {target_path}")
     return target_path

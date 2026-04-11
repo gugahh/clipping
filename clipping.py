@@ -54,7 +54,7 @@ def main():
     print(f"\tapi_key: \t\t\t{"(Atribuida)" if api_key != None else "(Nao Atribuida)"}")
     print(f"\tnum_dias_recuo: \t\t{num_dias_recuo}")
 
-    print(f"\nCriando pasta para hoje... ")
+    # print(f"\nCriando pasta para hoje... ")
     pastaHoje = create_todays_folder()
 
     dataInicio = (datetime.now() - timedelta(days=int(num_dias_recuo))) #Datetime
@@ -64,9 +64,9 @@ def main():
     assuntos = [
         {'titulo': 'One Health', 'query': '"World Health Organization"+"One Health"'},
         #{'titulo': 'Artificial Intelligence UAE', 'query': '"Artificial Intelligence"+UAE'},
-        {'titulo': 'Rare Earths - Brazil', 'query': '+"Rare Earths"+Brazil'},
         {'titulo': 'BRICS Bank', 'query': '"BRICS Bank"'},
-        #{'titulo': 'Belt and Road', 'query': '"Belt and Road"'},
+        #{'titulo': 'Rare Earths - Brazil', 'query': '+"Rare Earths"+Brazil'},
+        {'titulo': 'Belt and Road', 'query': '"Belt and Road"'},
         #{'titulo': 'Bangladesh', 'query': '"Bangladesh"'},
     ]
 
@@ -104,9 +104,9 @@ def main():
         #print(data)
         print(f"\tQuery: {query}")
         if (data['totalResults'] > 0):
-            print(f"\tQuantidade de Artigos: {data['totalResults']}\n")
+            print(f"\tQuantidade de Artigos: {data['totalResults']}")
         else:
-            print(f"\tNenhum artigo encontrado.\n")
+            print(f"\tNenhum artigo encontrado.")
 
         # 4. Print Results
         if data['status'] == 'ok':
@@ -167,6 +167,8 @@ def main():
             #print(f"\nQuantidade de Artigos: {data['totalResults']}\n")
         else:
             print("Error:", data.get('message'))
+        
+    print("\n")
 
     #print(f"\nArtigos:")
     #print(artigos)
