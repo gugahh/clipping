@@ -15,6 +15,7 @@ from includes_python.argo_translator import verifica_pacotes_linguagem, translat
 
 CONFIG_FILE = "config.properties"
 DATE_MASK_BR = "%d/%m/%Y %H:%M:%S"  # DD/MM/YYYY HH24:MI:SS
+DATE_MASK_BR_MID = "%d/%m/%Y %H:%M"  # DD/MM/YYYY HH24:MI
 DATE_MASK_BR_SHORT = "%d/%m/%Y"     # DD/MM/YYYY
 DATE_MASK_NEWS = "%Y-%m-%d"         # YYYY-MM-DD
 url = 'https://newsapi.org/v2/everything'   # URL da API de notícias (NewsAPI)
@@ -23,7 +24,7 @@ url = 'https://newsapi.org/v2/everything'   # URL da API de notícias (NewsAPI)
 
 def now_str() -> str:
     """Return current local timestamp formatted as DD/MM/YYYY HH24:MI:SS."""
-    return datetime.now().strftime(DATE_MASK_BR)
+    return datetime.now().strftime(DATE_MASK_BR_MID)
 
 # ── Obtem configuracoes a partir do config.properties ──────────────────────
 def read_config(path: str) -> configparser.ConfigParser:
@@ -36,6 +37,11 @@ def read_config(path: str) -> configparser.ConfigParser:
         content = "[DEFAULT]\n" + fh.read()
     config.read_string(content)
     return config
+
+def is_new_article(article) -> bool:
+    """Determine if the article is new based on its publication date."""
+    #TODO: Implementar logica para verificar se o artigo é novo, por exemplo, comparando a data de publicação com a data atual.
+    return True
 
 # -----------------------------------------------
 # ── AQUI COMECA o programa de verdade.
@@ -64,8 +70,8 @@ def main():
     # Aqui sao definidos os assuntos desejados, separados por virgula.  Use aspas para frases exatas, como "One Health"
     assuntos = [
         {'titulo': 'One Health', 'query': '"World Health Organization"+"One Health"'},
-        {'titulo': 'Artificial Intelligence UAE', 'query': '"Artificial Intelligence"+UAE'},
-        #{'titulo': 'Banco Islâmico de Desenvolvimento', 'query': '"Islamic Development Bank"'},
+        #{'titulo': 'Artificial Intelligence UAE', 'query': '"Artificial Intelligence"+UAE'},
+        {'titulo': 'Banco Islâmico de Desenvolvimento', 'query': '"Islamic Development Bank"'},
         {'titulo': 'Terras Raras - Brazil', 'query': '+"Rare Earths"+Brazil'},
         {'titulo': 'Belt and Road', 'query': '"Belt and Road"'},
         {'titulo': 'ASEAN', 'query': 'ASEAN'},
@@ -119,9 +125,9 @@ def main():
             nome_arquivo = f"{pastaHoje}/{titulo.replace(' ', '_')}.md"
             with open(nome_arquivo, "w", encoding="utf-8") as md_file:
                 md_file.write(f"# {titulo}\n\n")
-                md_file.write(f"_Gerado em: {now_str()}_\n\n")
-                md_file.write(f"_Query: {query}_\n\n")
-                md_file.write(f"_Total de Artigos: {data['totalResults']}_\n\n")
+                md_file.write(f"- Gerado em: {now_str()}\n")
+                md_file.write(f"- Query: {query}\n")
+                md_file.write(f"- Total de Artigos: {data['totalResults']}\n")
                 md_file.write("---\n\n")
 
                 for idx, article in enumerate(data['articles'], start=1):
@@ -140,6 +146,8 @@ def main():
 
                     #gravando cada um dos artigos no arquivo markdown, 
                     md_file.write(f"## {idx}. {esteArtigo['titulo_traduzido']}\n\n")
+                    if is_new_article(esteArtigo):
+                        md_file.write("![](../../images/new.png)")  # Exibe um ícone "new" para artigos considerados novos
                     md_file.write(f"**Descrição:** {esteArtigo['descricao_traduzida']}\n\n")
                     if esteArtigo['url_imagem'] != None:
                         md_file.write(f"![]({esteArtigo['url_imagem']})\n\n")
