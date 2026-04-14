@@ -7,6 +7,7 @@ import configparser
 import traceback
 import sys
 import webbrowser
+#import includes_python.persiste_sqlite as db 
 from datetime import datetime, timedelta
 from includes_python.folder_utils import create_todays_folder
 from includes_python.argo_translator import verifica_pacotes_linguagem, translate_en_to_pt
@@ -69,17 +70,24 @@ def main():
 
     # Aqui sao definidos os assuntos desejados, separados por virgula.  Use aspas para frases exatas, como "One Health"
     assuntos = [
-        {'titulo': 'One Health', 'query': '"World Health Organization"+"One Health"'},
+        #{'titulo': 'One Health', 'query': '"World Health Organization"+"One Health"'},
         #{'titulo': 'Artificial Intelligence UAE', 'query': '"Artificial Intelligence"+UAE'},
         {'titulo': 'Banco Islâmico de Desenvolvimento', 'query': '"Islamic Development Bank"'},
-        {'titulo': 'Terras Raras - Brazil', 'query': '+"Rare Earths"+Brazil'},
+        #{'titulo': 'Terras Raras - Brazil', 'query': '+"Rare Earths"+Brazil'},
         {'titulo': 'Belt and Road', 'query': '"Belt and Road"'},
-        {'titulo': 'ASEAN', 'query': 'ASEAN'},
-        #{'titulo': 'Bangladesh', 'query': '"Bangladesh"'},
+        {'titulo': 'Globalização - China', 'query': '+Globalization,+China'},
+        #{'titulo': 'ACNUR - Alto Comissariado das Nações Unidas para os Refugiados', 'query': 'ACNUR'},
+        #{'titulo': 'ASEAN', 'query': 'ASEAN'},
+        #{'titulo': 'Sarampo - Asia', 'query': '+Measles,+Asia'},
+        #{'titulo': 'Sarampo - Oriente Médio', 'query': '+Measles,+"Middle East"'},
+        #{'titulo': 'Oriente Médio - Saúde', 'query': '+Health,+"Middle East"'},
+        #{'titulo': 'ESCWA', 'query': 'ESCWA'},
+        #{'titulo': 'ESCAP', 'query': 'ESCAP'},
     ]
 
     print(f"\tPreparando o tradutor de inglês para português... ")  
-    verifica_pacotes_linguagem()
+    verifica_pacotes_linguagem() # Prepara o tradutor
+    #conn = db.open_connection() # Abre uma conexão com o banco de dados SQLite, para verificar artigos já existentes e gravar novos artigos.
 
     #query = '"One Health","World Health Organization",'  # Use aspas para frases exatas , como: "BRICS Bank","Belt and Road",', ,"Bangladesh","Qatar" , "Iran","India","China"
     # query = ',"Artificial Intelligence",UAE'  # Use aspas para frases exatas , como: "BRICS Bank","Belt and Road",', ,"Bangladesh","Qatar" , "Iran","India","China"
@@ -91,6 +99,7 @@ def main():
     for assunto in assuntos:
         titulo = assunto['titulo']
         query = assunto['query']
+        #sources = assunto['sources']  # Fonte opcional para filtrar os artigos, por exemplo: 'China Daily'. Se None, busca em todas as fontes.
 
         # Aqui ficarao armazenados todos os artigos, do assunto atual.
         # Cada artigo é um dict com as chaves: titulo, descricao, autor, data_publicacao, fonte, url_artigo, url_imagem, content
@@ -106,7 +115,10 @@ def main():
             'language': 'en',
             'from': dataInicio.strftime(DATE_MASK_NEWS),  # Data no formato '2026-04-07'
             'apiKey': api_key
+            #'sources': 'Newser,The Times of India'
         }
+        #if sources != None:
+        #    params['sources'] = sources
 
         # 3. Request
         response = requests.get(url, params=params)
@@ -119,7 +131,7 @@ def main():
             print(f"\tNenhum artigo encontrado.")
 
         # 4. Print Results
-        if data['status'] == 'ok':
+        if data['status'] == 'ok' and data['totalResults'] > 0:
 
             # Criando o arquivo markdown para o assunto atual, dentro da pasta de hoje.
             nome_arquivo = f"{pastaHoje}/{titulo.replace(' ', '_')}.md"
@@ -167,7 +179,12 @@ def main():
 
                     # armazenando em uma lista de artigos, para uso futuro.
                     artigos.append(esteArtigo)
+
+                    #db.fc_grava_artigo(conn, esteArtigo)  # Gravando o artigo no banco de dados SQLite, para controle de artigos já processados e futuros aprimoramentos.
+
             md_file.close()
+
+
             webbrowser.open(f'file://{os.getcwd()}/{nome_arquivo}')  # Abre o arquivo markdown gerado no navegador padrão
 
 
@@ -179,6 +196,7 @@ def main():
         else:
             print("Error:", data.get('message'))
         
+    #conn.close()  # Fecha a conexão com o banco de dados SQLite, após processar todos os assuntos e artigos.
     print("\n")
 
     #print(f"\nArtigos:")
