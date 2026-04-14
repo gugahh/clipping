@@ -72,6 +72,7 @@ def main():
     assuntos = [
         #{'titulo': 'One Health', 'query': '"World Health Organization"+"One Health"'},
         #{'titulo': 'Artificial Intelligence UAE', 'query': '"Artificial Intelligence"+UAE'},
+        {'titulo': 'Bloqueio de Ormuz', 'query': '+blockade,+Ormuz'},
         {'titulo': 'Banco Islâmico de Desenvolvimento', 'query': '"Islamic Development Bank"'},
         #{'titulo': 'Terras Raras - Brazil', 'query': '+"Rare Earths"+Brazil'},
         {'titulo': 'Belt and Road', 'query': '"Belt and Road"'},
@@ -131,7 +132,7 @@ def main():
             print(f"\tNenhum artigo encontrado.")
 
         # 4. Print Results
-        if data['status'] == 'ok' and data['totalResults'] > 0:
+        if data['status'] == 'ok':
 
             # Criando o arquivo markdown para o assunto atual, dentro da pasta de hoje.
             nome_arquivo = f"{pastaHoje}/{titulo.replace(' ', '_')}.md"

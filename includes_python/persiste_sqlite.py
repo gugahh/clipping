@@ -29,27 +29,26 @@ def close_connection(conn):
         print("ERRO ao fechar conexão com o banco de dados:", str(e))
         raise "Erro fechando conexão com o banco de dados: " + str(e)
 
-def fc_verifica_artigo_existente(conn, artigo):  
+def fc_obtem_data_artigo(conn, artigo):  
     """
-    Verifica se um determinado artigo já existe, com data anterior a de hoje.
-    Artigos cadastrados na data de hoje devem ser ignorados.
+    Obtem a data de leitura do artigo com base na URL do artigo.
+    Retorna a data de leitura do artigo ou None se o artigo não for encontrado. 
     O criterio da busca e a URL do artigo, que deve ser única.
     """
     try:
         with conn:
             cursor = conn.execute(
                 """
-                    SELECT count(*) 
+                    SELECT ARTI_DT_LEITURA
                     FROM ARTIGO
                     where ARTI_URL = ?
-                    and date(ARTI_DT_LEITURA) < date('now')
                 """,
                 (
                     [artigo["url_artigo"]]
                 )
             )
             resultado = cursor.fetchone()
-            return True if resultado[0] > 0 else False
+            return date.fromisoformat(resultado[0]) if resultado else None
     except Exception as e:
         # Erro: imprime no console + retorna "ERROR" + stack trace
         erro_completo = traceback.format_exc()
@@ -132,23 +131,33 @@ if __name__ == "__main__":
         }
         
 
-        #Teste Negativo: Consulta artigo 
+        # 1. Teste Negativo: Consulta artigo 
         #print(f"\nURL: {artigo_teste1['url_artigo']}")
-        resultado = fc_verifica_artigo_existente(conn, artigo_teste1)
-        print(f"Resultado do teste de verificação 1: {resultado} - Esperado: False")
+        resultado = fc_obtem_data_artigo(conn, artigo_teste1)
+        print(f"\nTeste 1 (select): {resultado} - Esperado: None")
 
-        #Teste Positivo: Consulta Artigo
+        #2. Teste Positivo: Consulta Artigo
         #print(f"\nURL: {artigo_teste2['url_artigo']}")
-        resultado = fc_verifica_artigo_existente(conn, artigo_teste2)
-        print(f"Resultado do teste de verificação 2: {resultado} - Esperado: True")
+        resultado = fc_obtem_data_artigo(conn, artigo_teste2)
+        print(f"\nTeste 2 (select): {resultado} - Esperado: data valida.")
+        print(f"Tipo de Resultado: {type(resultado)} - Esperado: datetime.date")
 
-        #Teste de Inserção: Insere artigo
+        #3. Teste de Inserção: Insere artigo
         resultado = fc_insere_artigo(conn, artigo_teste1)
-        print("Resultado do teste de insercao:", resultado)
+        print("\nTeste 3 (Inserção):", resultado)
 
-        #Teste de Exclusão: Exclui artigo
+        #4. Verifica a data do artigo recem inserido (deve ser a data atual)
+        resultado = fc_obtem_data_artigo(conn, artigo_teste1)
+        print(f"\nTeste 4: {resultado} - Esperado: {date.today().strftime('%Y-%m-%d')}.")
+        print(f"Tipo de Resultado: {type(resultado)} - Esperado: datetime.date")
+
+        #5. Teste de Exclusão: Exclui artigo
         resultado = fc_exclui_artigo(conn, artigo_teste1)       
-        print("Resultado do teste de exclusao:", resultado)
+        print(f"\nTeste 5 (Exclusão): Resultado: {resultado} - esperado: OK")
+
+        #6. Teste de Exclusão: Verificacao da exclusao do artigo (deve retornar None)
+        resultado = fc_obtem_data_artigo(conn, artigo_teste1)       
+        print(f"\nTeste 5 (Verificação da Exclusão): Resultado: {resultado} - esperado: None")
 
         close_connection(conn)
 
