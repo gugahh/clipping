@@ -34,6 +34,7 @@ def fc_obtem_data_artigo(conn, artigo):
     Obtem a data de leitura do artigo com base na URL do artigo.
     Retorna a data de leitura do artigo ou None se o artigo não for encontrado. 
     O criterio da busca e a URL do artigo, que deve ser única.
+    Para fins de otimizacao, so vamos buscar nos ultimos 30 dias.
     """
     try:
         with conn:
@@ -42,6 +43,7 @@ def fc_obtem_data_artigo(conn, artigo):
                     SELECT ARTI_DT_LEITURA
                     FROM ARTIGO
                     where ARTI_URL = ?
+                    and ARTI_DT_LEITURA >= date('now', '-30 days')
                 """,
                 (
                     [artigo["url_artigo"]]

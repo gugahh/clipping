@@ -7,7 +7,7 @@ import configparser
 import traceback
 import sys
 import webbrowser
-#import includes_python.persiste_sqlite as db 
+import includes_python.persiste_sqlite as db 
 from datetime import datetime, timedelta
 from includes_python.folder_utils import create_todays_folder
 from includes_python.argo_translator import verifica_pacotes_linguagem, translate_en_to_pt
@@ -39,11 +39,6 @@ def read_config(path: str) -> configparser.ConfigParser:
     config.read_string(content)
     return config
 
-def is_new_article(article) -> bool:
-    """Determine if the article is new based on its publication date."""
-    #TODO: Implementar logica para verificar se o artigo é novo, por exemplo, comparando a data de publicação com a data atual.
-    return True
-
 # -----------------------------------------------
 # ── AQUI COMECA o programa de verdade.
 # -----------------------------------------------
@@ -70,31 +65,27 @@ def main():
 
     # Aqui sao definidos os assuntos desejados, separados por virgula.  Use aspas para frases exatas, como "One Health"
     assuntos = [
-        #{'titulo': 'One Health', 'query': '"World Health Organization"+"One Health"'},
-        #{'titulo': 'Artificial Intelligence UAE', 'query': '"Artificial Intelligence"+UAE'},
+        {'titulo': 'One Health', 'query': '"World Health Organization"+"One Health"'},
+        {'titulo': 'Artificial Intelligence UAE', 'query': '"Artificial Intelligence"+UAE'},
         {'titulo': 'Bloqueio de Ormuz', 'query': '+blockade,+Ormuz'},
         {'titulo': 'Banco Islâmico de Desenvolvimento', 'query': '"Islamic Development Bank"'},
-        #{'titulo': 'Terras Raras - Brazil', 'query': '+"Rare Earths"+Brazil'},
+        {'titulo': 'Terras Raras - Brazil', 'query': '+"Rare Earths"+Brazil'},
         {'titulo': 'Belt and Road', 'query': '"Belt and Road"'},
         {'titulo': 'Globalização - China', 'query': '+Globalization,+China'},
-        #{'titulo': 'ACNUR - Alto Comissariado das Nações Unidas para os Refugiados', 'query': 'ACNUR'},
-        #{'titulo': 'ASEAN', 'query': 'ASEAN'},
-        #{'titulo': 'Sarampo - Asia', 'query': '+Measles,+Asia'},
-        #{'titulo': 'Sarampo - Oriente Médio', 'query': '+Measles,+"Middle East"'},
-        #{'titulo': 'Oriente Médio - Saúde', 'query': '+Health,+"Middle East"'},
-        #{'titulo': 'ESCWA', 'query': 'ESCWA'},
-        #{'titulo': 'ESCAP', 'query': 'ESCAP'},
+        {'titulo': 'ACNUR - Alto Comissariado das Nações Unidas para os Refugiados', 'query': 'ACNUR'},
+        {'titulo': 'ASEAN', 'query': 'ASEAN'},
+        {'titulo': 'Sarampo - Asia', 'query': '+Measles,+Asia'},
+        {'titulo': 'Sarampo - Oriente Médio', 'query': '+Measles,+"Middle East"'},
+        {'titulo': 'Oriente Médio - Saúde', 'query': '+Health,+"Middle East"'},
+        {'titulo': 'ESCWA', 'query': 'ESCWA'},
+        {'titulo': 'ESCAP', 'query': 'ESCAP'},
     ]
 
     print(f"\tPreparando o tradutor de inglês para português... ")  
     verifica_pacotes_linguagem() # Prepara o tradutor
-    #conn = db.open_connection() # Abre uma conexão com o banco de dados SQLite, para verificar artigos já existentes e gravar novos artigos.
+    conn = db.open_connection() # Abre uma conexão com o banco de dados SQLite, para verificar artigos já existentes e gravar novos artigos.
 
-    #query = '"One Health","World Health Organization",'  # Use aspas para frases exatas , como: "BRICS Bank","Belt and Road",', ,"Bangladesh","Qatar" , "Iran","India","China"
-    # query = ',"Artificial Intelligence",UAE'  # Use aspas para frases exatas , como: "BRICS Bank","Belt and Road",', ,"Bangladesh","Qatar" , "Iran","India","China"
-    #query = '"Rare Earths"+Brazil'
-    #query = '"World Health Organization"+"One Health"'
-
+    # ----------------------------------------------------------
     # Processando cada um dos assuntos definidos;
     # Para cada assunto sera gerado um arquivo Markdown.
     for assunto in assuntos:
@@ -118,8 +109,6 @@ def main():
             'apiKey': api_key
             #'sources': 'Newser,The Times of India'
         }
-        #if sources != None:
-        #    params['sources'] = sources
 
         # 3. Request
         response = requests.get(url, params=params)
@@ -156,10 +145,17 @@ def main():
                         partes = esteArtigo['conteudo_traduzido'].split('…')
                         parte_traduzida = translate_en_to_pt(partes[0])  # Traduz apenas a primeira parte
                         esteArtigo['conteudo_traduzido'] = parte_traduzida + ('…' + partes[1] if len(partes) > 1 else '')  # Reconstroi o conteúdo com a parte traduzida
+                    
+                    # Verificando se este artigo eh novo ou nao.
+                    dt_artigo = db.fc_obtem_data_artigo(conn, esteArtigo)  # Obtem a data de leitura do artigo, se ele já existir no banco de dados.
+                    #Artigos com data de hoje tambem sao considerados como novos. Temos que converter para string e comparar, para evitar problemas de comparacao.
+                    esteArtigo['eh_novo'] = True if (dt_artigo == None or (datetime.now().strftime('%Y-%m-%d') == dt_artigo.strftime('%Y-%m-%d'))) else False
+                    if dt_artigo == None:
+                        db.fc_insere_artigo(conn, esteArtigo)  # Insere o artigo no banco de dados.
 
-                    #gravando cada um dos artigos no arquivo markdown, 
+                    #gravando cada um dos artigos no arquivo markdown
                     md_file.write(f"## {idx}. {esteArtigo['titulo_traduzido']}\n\n")
-                    if is_new_article(esteArtigo):
+                    if esteArtigo['eh_novo']:
                         md_file.write("![](../../images/new.png)")  # Exibe um ícone "new" para artigos considerados novos
                     md_file.write(f"**Descrição:** {esteArtigo['descricao_traduzida']}\n\n")
                     if esteArtigo['url_imagem'] != None:
@@ -181,10 +177,7 @@ def main():
                     # armazenando em uma lista de artigos, para uso futuro.
                     artigos.append(esteArtigo)
 
-                    #db.fc_grava_artigo(conn, esteArtigo)  # Gravando o artigo no banco de dados SQLite, para controle de artigos já processados e futuros aprimoramentos.
-
             md_file.close()
-
 
             webbrowser.open(f'file://{os.getcwd()}/{nome_arquivo}')  # Abre o arquivo markdown gerado no navegador padrão
 
@@ -197,11 +190,9 @@ def main():
         else:
             print("Error:", data.get('message'))
         
-    #conn.close()  # Fecha a conexão com o banco de dados SQLite, após processar todos os assuntos e artigos.
+    conn.close()  # Fecha a conexão com o banco de dados SQLite, após processar todos os assuntos e artigos.
     print("\n")
 
-    #print(f"\nArtigos:")
-    #print(artigos)
 
 if __name__ == "__main__":
     try:
