@@ -66,17 +66,17 @@ def main():
     # Aqui sao definidos os assuntos desejados, separados por virgula.  Use aspas para frases exatas, como "One Health"
     assuntos = [
         {'titulo': 'One Health', 'query': '"World Health Organization"+"One Health"'},
-        {'titulo': 'Artificial Intelligence UAE', 'query': '"Artificial Intelligence"+UAE'},
-        {'titulo': 'Bloqueio de Ormuz', 'query': '+blockade,+Ormuz'},
+        #{'titulo': 'Artificial Intelligence UAE', 'query': '"Artificial Intelligence"+UAE'},
+        #{'titulo': 'Bloqueio de Ormuz', 'query': '+blockade,+Ormuz'},
         {'titulo': 'Banco Islâmico de Desenvolvimento', 'query': '"Islamic Development Bank"'},
         {'titulo': 'Terras Raras - Brazil', 'query': '+"Rare Earths"+Brazil'},
         {'titulo': 'Belt and Road', 'query': '"Belt and Road"'},
-        {'titulo': 'Globalização - China', 'query': '+Globalization,+China'},
-        {'titulo': 'ACNUR - Alto Comissariado das Nações Unidas para os Refugiados', 'query': 'ACNUR'},
+        #{'titulo': 'Globalização - China', 'query': '+Globalization,+China'},
+        #{'titulo': 'ACNUR - Alto Comissariado das Nações Unidas para os Refugiados', 'query': 'ACNUR'},
         {'titulo': 'ASEAN', 'query': 'ASEAN'},
         {'titulo': 'Sarampo - Asia', 'query': '+Measles,+Asia'},
         {'titulo': 'Sarampo - Oriente Médio', 'query': '+Measles,+"Middle East"'},
-        {'titulo': 'Oriente Médio - Saúde', 'query': '+Health,+"Middle East"'},
+        #{'titulo': 'Oriente Médio - Saúde', 'query': '+Health,+"Middle East"'},
         {'titulo': 'ESCWA', 'query': 'ESCWA'},
         {'titulo': 'ESCAP', 'query': 'ESCAP'},
     ]
@@ -132,7 +132,7 @@ def main():
                 md_file.write(f"- Total de Artigos: {data['totalResults']}\n")
                 md_file.write("---\n\n")
 
-                for idx, article in enumerate(data['articles'], start=1):
+                for article in data['articles']:
 
                     esteArtigo = {'titulo': article['title'], 'descricao': article['description'], 'autor': article['author'], 'data_publicacao': article['publishedAt'], 'fonte': article['source']['name'], 'url_artigo': article['url'], 'url_imagem': article['urlToImage'], 'conteudo': article['content'], 'dt_publicacao': article['publishedAt']}
 
@@ -153,7 +153,21 @@ def main():
                     if dt_artigo == None:
                         db.fc_insere_artigo(conn, esteArtigo)  # Insere o artigo no banco de dados.
 
-                    #gravando cada um dos artigos no arquivo markdown
+                    # Autor pode ser uma lista longa. Tratando nomes longos demais.
+                    if(esteArtigo['autor'] != None and len(esteArtigo['autor']) > 70): 
+                        esteArtigo['autor'] = esteArtigo['autor'][:70] + "..."  # Trunca o nome do autor se for muito longo 
+                    else: 
+                        esteArtigo['autor'] = esteArtigo['autor'] if esteArtigo['autor'] != None else "Desconhecido"
+
+                    # armazenando o artigo na lista.
+                    artigos.append(esteArtigo)
+                # fim do loop de artigos inicial.
+
+                # Re-ordenando os artigos, para que os novos fiquem no topo da lista.
+                artigos_ordenados = sorted(artigos, key=lambda x: x['eh_novo'], reverse=True)
+
+                #gravando cada um dos artigos, ja ordenados, no arquivo markdown
+                for idx, esteArtigo in enumerate(artigos_ordenados, start=1):
                     md_file.write(f"## {idx}. {esteArtigo['titulo_traduzido']}\n\n")
                     if esteArtigo['eh_novo']:
                         md_file.write("![](../../images/new.png)")  # Exibe um ícone "new" para artigos considerados novos
@@ -161,11 +175,6 @@ def main():
                     if esteArtigo['url_imagem'] != None:
                         md_file.write(f"![]({esteArtigo['url_imagem']})\n\n")
 
-                    # Autor pode ser uma lista longa. Tratando nomes longos demais.
-                    if(esteArtigo['autor'] != None and len(esteArtigo['autor']) > 70): 
-                        esteArtigo['autor'] = esteArtigo['autor'][:70] + "..."  # Trunca o nome do autor se for muito longo 
-                    else: 
-                        esteArtigo['autor'] = esteArtigo['autor'] if esteArtigo['autor'] != None else "Desconhecido"
 
                     md_file.write(f"**Autor(es):** {esteArtigo['autor']}\n\n")  
                     md_file.write(f"**Publicado em:** {datetime.fromisoformat(esteArtigo['data_publicacao']).strftime(DATE_MASK_BR)}\n\n")
@@ -173,9 +182,6 @@ def main():
                     md_file.write(f"**URL:** {esteArtigo['url_artigo']}\n\n")
                     md_file.write(f"**Conteúdo:** {esteArtigo['conteudo_traduzido']}\n\n")
                     md_file.write("---\n\n")
-
-                    # armazenando em uma lista de artigos, para uso futuro.
-                    artigos.append(esteArtigo)
 
             md_file.close()
 
