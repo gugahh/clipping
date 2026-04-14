@@ -127,9 +127,9 @@ def main():
             nome_arquivo = f"{pastaHoje}/{titulo.replace(' ', '_')}.md"
             with open(nome_arquivo, "w", encoding="utf-8") as md_file:
                 md_file.write(f"# {titulo}\n\n")
-                md_file.write(f"- Gerado em: {now_str()}\n")
-                md_file.write(f"- Query: {query}\n")
-                md_file.write(f"- Total de Artigos: {data['totalResults']}\n")
+                md_file.write(f"- _Gerado em: {now_str()}_\n")
+                md_file.write(f"- _Query: {query}_\n")
+                md_file.write(f"- _Total de Artigos: {data['totalResults']}_\n")
                 md_file.write("---\n\n")
 
                 for article in data['articles']:
