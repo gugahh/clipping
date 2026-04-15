@@ -39,6 +39,60 @@ def read_config(path: str) -> configparser.ConfigParser:
     config.read_string(content)
     return config
 
+def fc_verifica_se_artigo_novo(conn, artigo):
+    """
+    Verifica se o artigo é novo, ou seja, se ele ainda não foi lido (ou foi lido hoje).
+    Atribui no dicionário do artigo a chave 'eh_novo' com valor True ou False, dependendo do resultado da verificação;
+    Atribui o id do artigo no dicionário do artigo, caso ele seja inserido no banco de dados.
+    """
+    # Verificando no db se este artigo eh novo ou nao.
+    info_artigo = db.fc_obtem_dados_artigo(conn, artigo)  # Obtem a data de leitura do artigo, se ele já existir no banco de dados.
+    print(f"\tinfo_artigo: {info_artigo}\n")
+    if info_artigo == None:
+        idArtigo = db.fc_insere_artigo(conn, artigo)  # Insere o artigo no banco de dados.
+        print(f"\tidArtigo: {idArtigo}\n")
+        artigo['id'] = idArtigo  # Armazena o ID do artigo no dicionário do artigo, para futuras referências.
+    #Artigos com data de hoje tambem sao considerados como novos. Temos que converter para string e comparar, para evitar problemas de comparacao.
+    artigo['eh_novo'] = True if (info_artigo == None or (datetime.now().strftime('%Y-%m-%d') == info_artigo["dt_leitura"].strftime('%Y-%m-%d'))) else False
+
+def fc_traduz_artigo(conn, artigo):
+    """
+    Traduz o conteúdo do artigo para português e trunca o conteúdo traduzido, se necessário.
+    Utiliza o cache de traducoes no banco de dados, para evitar traduzir o mesmo artigo mais de uma vez.
+    """
+    # Caso o artigo tenha id, ele pode ja existir no cache de traducoes.
+    if artigo['id'] != None:
+        traducacao_cache = db.fc_obtem_traducao_cache(conn, artigo['id'])  # Obtem as traduções do artigo, se existirem.
+        print(f"\ttraducacao_cache: {traducacao_cache}\n")
+        if traducacao_cache != None:
+            artigo['titulo_traduzido'] = traducacao_cache['titulo_traduzido']
+            artigo['descricao_traduzida'] = traducacao_cache['descricao_traduzida']
+            artigo['conteudo_traduzido'] = traducacao_cache['conteudo_traduzido']
+            return  # Se as traduções já existem no banco de dados, não é necessário traduzi-las novamente. 
+        
+    # Se chegou aqui, a traducao nao existe no cache, ainda.
+    # Efetuando traducoes para português, usando o argostranslate.
+    artigo['titulo_traduzido'] = "(Sem Título)" if artigo['titulo'] == None else translate_en_to_pt(artigo['titulo']) 
+    artigo['descricao_traduzida'] = "(Sem Descrição)" if artigo['descricao'] == None else translate_en_to_pt(artigo['descricao'])   
+    artigo['conteudo_traduzido']  = "(Sem Conteúdo)"
+    if artigo['conteudo'] != None:
+        # O conteúdo frequentemente tem uma parte truncada, seguida de um link para o artigo completo. Vamos tentar traduzir apenas a parte inicial, para evitar erros de tradução.
+        partes = artigo['conteudo_traduzido'].split('…')
+        parte_traduzida = translate_en_to_pt(partes[0])  # Traduz apenas a primeira parte
+        artigo['conteudo_traduzido'] = parte_traduzida + ('…' + partes[1] if len(partes) > 1 else '')  # Reconstroi o conteúdo com a parte traduzida
+    db.fc_insere_traducao_cache(conn, artigo)  # Insere a tradução no cache do banco de dados, para futuras referências.
+
+def fc_trata_nome_autor(artigo):
+    """
+    O campo Autor pode ser uma lista longa. Tratando nomes de autor longos demais.
+    Altera o dictionary original. 
+    """
+    if(artigo['autor'] != None and len(artigo['autor']) > 70): 
+        artigo['autor'] = artigo['autor'][:70] + "..."  # Trunca o nome do autor se for muito longo 
+    else: 
+        artigo['autor'] = artigo['autor'] if artigo['autor'] != None else "Desconhecido"
+    
+
 # -----------------------------------------------
 # ── AQUI COMECA o programa de verdade.
 # -----------------------------------------------
@@ -65,20 +119,20 @@ def main():
 
     # Aqui sao definidos os assuntos desejados, separados por virgula.  Use aspas para frases exatas, como "One Health"
     assuntos = [
-        {'titulo': 'One Health', 'query': '"World Health Organization"+"One Health"'},
+        #{'titulo': 'One Health', 'query': '"World Health Organization"+"One Health"'},
         #{'titulo': 'Artificial Intelligence UAE', 'query': '"Artificial Intelligence"+UAE'},
         #{'titulo': 'Bloqueio de Ormuz', 'query': '+blockade,+Ormuz'},
-        {'titulo': 'Banco Islâmico de Desenvolvimento', 'query': '"Islamic Development Bank"'},
-        {'titulo': 'Terras Raras - Brazil', 'query': '+"Rare Earths"+Brazil'},
-        {'titulo': 'Belt and Road', 'query': '"Belt and Road"'},
+        #{'titulo': 'Banco Islâmico de Desenvolvimento', 'query': '"Islamic Development Bank"'},
+        #{'titulo': 'Terras Raras - Brazil', 'query': '+"Rare Earths"+Brazil'},
+        #{'titulo': 'Belt and Road', 'query': '"Belt and Road"'},
         #{'titulo': 'Globalização - China', 'query': '+Globalization,+China'},
         #{'titulo': 'ACNUR - Alto Comissariado das Nações Unidas para os Refugiados', 'query': 'ACNUR'},
-        {'titulo': 'ASEAN', 'query': 'ASEAN'},
+        #{'titulo': 'ASEAN', 'query': 'ASEAN'},
         {'titulo': 'Sarampo - Asia', 'query': '+Measles,+Asia'},
-        {'titulo': 'Sarampo - Oriente Médio', 'query': '+Measles,+"Middle East"'},
+        #{'titulo': 'Sarampo - Oriente Médio', 'query': '+Measles,+"Middle East"'},
         #{'titulo': 'Oriente Médio - Saúde', 'query': '+Health,+"Middle East"'},
-        {'titulo': 'ESCWA', 'query': 'ESCWA'},
-        {'titulo': 'ESCAP', 'query': 'ESCAP'},
+        #{'titulo': 'ESCWA', 'query': 'ESCWA'},
+        #{'titulo': 'ESCAP', 'query': 'ESCAP'},
     ]
 
     print(f"\tPreparando o tradutor de inglês para português... ")  
@@ -125,7 +179,7 @@ def main():
         else:
             print(f"\tNenhum artigo encontrado.")
 
-        # 4. Print Results
+        # 4. Monta a lista de artigos, traduz os campos necessários, verifica se são novos ou não, e grava no arquivo markdown.
         if data['status'] == 'ok':
 
             # Criando o arquivo markdown para o assunto atual, dentro da pasta de hoje.
@@ -139,7 +193,7 @@ def main():
 
                 for article in data['articles']:
 
-                    esteArtigo = {'titulo': article['title'], 'descricao': article['description'], 'autor': article['author'], 'data_publicacao': article['publishedAt'], 'fonte': article['source']['name'], 'url_artigo': article['url'], 'url_imagem': article['urlToImage'], 'conteudo': article['content'], 'dt_publicacao': article['publishedAt']}
+                    esteArtigo = {'id': None, 'eh_novo': True, 'titulo': article['title'], 'descricao': article['description'], 'autor': article['author'], 'data_publicacao': article['publishedAt'], 'fonte': article['source']['name'], 'url_artigo': article['url'], 'url_imagem': article['urlToImage'], 'conteudo': article['content'], 'dt_publicacao': article['publishedAt']}
 
                     # Efetuando traducoes para português, usando o argostranslate.
                     esteArtigo['titulo_traduzido'] = "(Sem Título)" if esteArtigo['titulo'] == None else translate_en_to_pt(esteArtigo['titulo']) 
@@ -152,7 +206,10 @@ def main():
                         esteArtigo['conteudo_traduzido'] = parte_traduzida + ('…' + partes[1] if len(partes) > 1 else '')  # Reconstroi o conteúdo com a parte traduzida
                     
                     # Verificando se este artigo eh novo ou nao.
-                    dt_artigo = db.fc_obtem_data_artigo(conn, esteArtigo)  # Obtem a data de leitura do artigo, se ele já existir no banco de dados.
+                    #dt_artigo = db.fc_obtem_data_artigo(conn, esteArtigo)  # Obtem a data de leitura do artigo, se ele já existir no banco de dados.
+                    dados_artigo_bd = db.fc_obtem_dados_artigo(conn, esteArtigo)
+                    dt_artigo = dados_artigo_bd['dt_leitura'] if dados_artigo_bd != None else None
+                    print(f"\tData do artigo do BD: {dt_artigo} - Data de leitura no BD: {dt_artigo}\n")
                     #Artigos com data de hoje tambem sao considerados como novos. Temos que converter para string e comparar, para evitar problemas de comparacao.
                     esteArtigo['eh_novo'] = True if (dt_artigo == None or (datetime.now().strftime('%Y-%m-%d') == dt_artigo.strftime('%Y-%m-%d'))) else False
                     if dt_artigo == None:
@@ -163,6 +220,22 @@ def main():
                         esteArtigo['autor'] = esteArtigo['autor'][:70] + "..."  # Trunca o nome do autor se for muito longo 
                     else: 
                         esteArtigo['autor'] = esteArtigo['autor'] if esteArtigo['autor'] != None else "Desconhecido"
+                    """
+                    fc_verifica_se_artigo_novo(conn, esteArtigo) #Atribui o id do artigo e se ele é novo ou não, no dicionário do artigo.
+
+                    print(f"\nProcessando artigo: {esteArtigo['titulo']} (ID: {esteArtigo['id']}, Novo: {esteArtigo['eh_novo']})\n")
+                    if esteArtigo['id'] == None:
+                        #Se o artigo não tem id: Inserindo o artigo no BD
+                        result_gravacao, id_artigo = db.fc_insere_artigo(conn, esteArtigo)
+                        if result_gravacao == 'OK':
+                            esteArtigo['id'] = id_artigo  # Armazena o ID do artigo no dicionário do artigo, para futuras referências.
+                        else:
+                            print(f"\nERRO ao gravar o artigo no banco de dados. Título: {esteArtigo['titulo']}\n")
+                            continue  # Pula para o próximo artigo, para evitar processar um artigo sem ID válido.
+
+                    fc_traduz_artigo(conn, esteArtigo) # Traduz o o artigo, usando o argostranslate. Usa cache para otimizar.
+                    fc_trata_nome_autor(esteArtigo) # Autor pode ser uma lista longa. Tratando nomes de autor longos demais.
+                    """
 
                     # armazenando o artigo na lista.
                     artigos.append(esteArtigo)

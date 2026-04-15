@@ -29,10 +29,15 @@ def close_connection(conn):
         print("ERRO ao fechar conexão com o banco de dados:", str(e))
         raise "Erro fechando conexão com o banco de dados: " + str(e)
 
-def fc_obtem_data_artigo(conn, artigo):  
+def fc_obtem_dados_artigo(conn, artigo):  
     """
-    Obtem a data de leitura do artigo com base na URL do artigo.
-    Retorna a data de leitura do artigo ou None se o artigo não for encontrado. 
+    Obtem dados do artigo com base na URL do artigo.
+    Retorna um dicionário com os dados do artigo ou None se não encontrado.
+    O dicionário retornado tem a seguinte estrutura:
+    {
+        "id_artigo": int,          # -> ARTI_DK
+        "dt_leitura": date         # -> ARTI_DT_LEITURA 
+    }
     O criterio da busca e a URL do artigo, que deve ser única.
     Para fins de otimizacao, so vamos buscar nos ultimos 30 dias.
     """
@@ -40,7 +45,7 @@ def fc_obtem_data_artigo(conn, artigo):
         with conn:
             cursor = conn.execute(
                 """
-                    SELECT ARTI_DT_LEITURA
+                    SELECT ARTI_DK, ARTI_DT_LEITURA
                     FROM ARTIGO
                     where ARTI_URL = ?
                     and ARTI_DT_LEITURA >= date('now', '-30 days')
@@ -50,7 +55,7 @@ def fc_obtem_data_artigo(conn, artigo):
                 )
             )
             resultado = cursor.fetchone()
-            return date.fromisoformat(resultado[0]) if resultado else None
+            return {"id_artigo": resultado[0], "dt_leitura": date.fromisoformat(resultado[1])}  if resultado else None
     except Exception as e:
         # Erro: imprime no console + retorna "ERROR" + stack trace
         erro_completo = traceback.format_exc()
@@ -69,13 +74,15 @@ def fc_insere_artigo(conn, artigo):
                 "url_artigo": string    # -> ARTI_URL
                 "fonte": string         # -> ARTI_DS_FONTE
             }
+    Retorna: uma tupla com o resultado da operação. 
+    Se a inserção for bem-sucedida, retorna ("OK", id_artigo), onde id_artigo é o ID do artigo recém-inserido. Em caso de erro, retorna ("ERRO", mensagem_erro).
     """
     #_criar_tabelas()  # Garante que as tabelas existem (removido)
 
     try:
         with conn:
             # 1. Insere o artigo
-            conn.execute("INSERT INTO ARTIGO (ARTI_DS_TITULO, ARTI_URL, ARTI_DS_FONTE,ARTI_DT_LEITURA) VALUES (?, ?, ?, ?)",
+            cursor = conn.execute("INSERT INTO ARTIGO (ARTI_DS_TITULO, ARTI_URL, ARTI_DS_FONTE,ARTI_DT_LEITURA) VALUES (?, ?, ?, ?)",
                 (
                     artigo["titulo"],
                     artigo["url_artigo"],
@@ -84,11 +91,12 @@ def fc_insere_artigo(conn, artigo):
                 )
             )
             conn.commit()
-            return "OK"
+            lastrowid = cursor.lastrowid  # Retorna o Id do registro criado
+            return ("OK", lastrowid)
     except sqlite3.IntegrityError as e:
         # Erro de integridade (ex: URL já existe)
         print(f"ERRO de integridade ao gravar Artigo ({artigo.get('titulo', 'N/A')}): {str(e)}")
-        return f"ERRO de integridade: {str(e)}"
+        return ("ERRO", f"ERRO de integridade: {str(e)}")
 
     except Exception as e:
         # Erro: imprime no console + retorna "ERROR" + stack trace
@@ -98,19 +106,19 @@ def fc_insere_artigo(conn, artigo):
         print(erro_completo)
         return mensagem_erro
     
-def fc_exclui_artigo(conn, artigo):
+def fc_exclui_artigo(conn, id_artigo):
     """
     Exclui um artigo da tabela ARTIGO com base na URL do artigo.
     Parâmetros:
-        - artigo (dict): Dicionário contendo a URL do artigo a ser excluído
-   """
+        - id_artigo (int): ID do artigo a ser excluído
+    """
     try:
         with conn:
-            conn.execute("DELETE FROM ARTIGO WHERE ARTI_URL = ?", (artigo["url_artigo"],))
+            conn.execute("DELETE FROM ARTIGO WHERE ARTI_DK = ?", (id_artigo,))
             conn.commit()
             return "OK"
     except Exception as e:
-        print(f"ERRO ao excluir Artigo ({artigo.get('titulo', 'N/A')}): {str(e)}")
+        print(f"ERRO ao excluir Artigo (ID: {id_artigo}): {str(e)}")
         return f"ERRO ao excluir Artigo: {str(e)}"
     
 def fc_insere_traducao_cache(conn, artigo):
@@ -205,30 +213,30 @@ if __name__ == "__main__":
 
         # 1. Teste Negativo: Consulta artigo 
         #print(f"\nURL: {artigo_teste1['url_artigo']}")
-        resultado = fc_obtem_data_artigo(conn, artigo_teste1)
+        resultado = fc_obtem_dados_artigo(conn, artigo_teste1)
         print(f"\nTeste 1 (select): {resultado} - Esperado: None")
 
         #2. Teste Positivo: Consulta Artigo
         #print(f"\nURL: {artigo_teste2['url_artigo']}")
-        resultado = fc_obtem_data_artigo(conn, artigo_teste2)
-        print(f"\nTeste 2 (select): {resultado} - Esperado: data valida.")
-        print(f"Tipo de Resultado: {type(resultado)} - Esperado: datetime.date")
+        resultado = fc_obtem_dados_artigo(conn, artigo_teste2)
+        print(f"\nTeste 2 (select): {resultado} - Esperado: dados válidos.")
+        print(f"Tipo de Resultado: {type(resultado)} - Esperado: dict")
 
         #3. Teste de Inserção: Insere artigo
         resultado = fc_insere_artigo(conn, artigo_teste1)
         print("\nTeste 3 (Inserção):", resultado)
 
         #4. Verifica a data do artigo recem inserido (deve ser a data atual)
-        resultado = fc_obtem_data_artigo(conn, artigo_teste1)
-        print(f"\nTeste 4: {resultado} - Esperado: {date.today().strftime('%Y-%m-%d')}.")
-        print(f"Tipo de Resultado: {type(resultado)} - Esperado: datetime.date")
+        resultado_inc = fc_obtem_dados_artigo(conn, artigo_teste1)
+        print(f"\nTeste 4: {resultado_inc} - Esperado: {date.today().strftime('%Y-%m-%d')}.")
+        print(f"Tipo de Resultado: {type(resultado_inc)} - Esperado: Data.")
 
-        #5. Teste de Exclusão: Exclui artigo
-        resultado = fc_exclui_artigo(conn, artigo_teste1)       
+        #5. Teste de Exclusão: Exclui artigo recem-criado
+        resultado = fc_exclui_artigo(conn, resultado_inc["id_artigo"])       
         print(f"\nTeste 5 (Exclusão): Resultado: {resultado} - esperado: OK")
 
         #6. Teste de Exclusão: Verificacao da exclusao do artigo (deve retornar None)
-        resultado = fc_obtem_data_artigo(conn, artigo_teste1)       
+        resultado = fc_obtem_dados_artigo(conn, artigo_teste1)
         print(f"\nTeste 6 (Verificação da Exclusão): Resultado: {resultado} - esperado: None")
 
         #7. Teste de Cache: Insere artigo no cache
