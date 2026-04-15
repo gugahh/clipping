@@ -113,8 +113,13 @@ def main():
         # 3. Request
         response = requests.get(url, params=params)
         data = response.json()
-        #print(data)
+        #print(data) #So para Debug
         print(f"\tQuery: {query}")
+        if (data != None and data['status'] == 'error'):
+            print(f"\nERRO ao acessar a API de notícias; Tipo de erro: {data['code']}")
+            print(f"\nDetalhe do Erro: {data['message']}\n")
+            sys.exit(-1) #Saida com erro, para evitar continuar o processamento sem dados validos.
+
         if (data['totalResults'] > 0):
             print(f"\tQuantidade de Artigos: {data['totalResults']}")
         else:
