@@ -125,10 +125,10 @@ def main():
         #{'titulo': 'Banco Islâmico de Desenvolvimento', 'query': '"Islamic Development Bank"'},
         #{'titulo': 'Terras Raras - Brazil', 'query': '+"Rare Earths"+Brazil'},
         #{'titulo': 'Belt and Road', 'query': '"Belt and Road"'},
-        #{'titulo': 'Globalização - China', 'query': '+Globalization,+China'},
+        {'titulo': 'Globalização - China', 'query': '+Globalization,+China'},
         #{'titulo': 'ACNUR - Alto Comissariado das Nações Unidas para os Refugiados', 'query': 'ACNUR'},
         #{'titulo': 'ASEAN', 'query': 'ASEAN'},
-        {'titulo': 'Sarampo - Asia', 'query': '+Measles,+Asia'},
+        #{'titulo': 'Sarampo - Asia', 'query': '+Measles,+Asia'},
         #{'titulo': 'Sarampo - Oriente Médio', 'query': '+Measles,+"Middle East"'},
         #{'titulo': 'Oriente Médio - Saúde', 'query': '+Health,+"Middle East"'},
         #{'titulo': 'ESCWA', 'query': 'ESCWA'},
@@ -193,6 +193,7 @@ def main():
 
                 for article in data['articles']:
 
+                    artigo_ja_persistido = False  
                     esteArtigo = {'id': None, 'eh_novo': True, 'titulo': article['title'], 'descricao': article['description'], 'autor': article['author'], 'data_publicacao': article['publishedAt'], 'fonte': article['source']['name'], 'url_artigo': article['url'], 'url_imagem': article['urlToImage'], 'conteudo': article['content'], 'dt_publicacao': article['publishedAt']}
 
                     # Efetuando traducoes para português, usando o argostranslate.
@@ -207,13 +208,18 @@ def main():
                     
                     # Verificando se este artigo eh novo ou nao.
                     #dt_artigo = db.fc_obtem_data_artigo(conn, esteArtigo)  # Obtem a data de leitura do artigo, se ele já existir no banco de dados.
-                    dados_artigo_bd = db.fc_obtem_dados_artigo(conn, esteArtigo)
-                    dt_artigo = dados_artigo_bd['dt_leitura'] if dados_artigo_bd != None else None
+                    info_artigo_bd = db.fc_obtem_dados_artigo(conn, esteArtigo)
+                    print(esteArtigo['titulo_traduzido'])
+                    print(f"\tinfo_artigo_bd: {info_artigo_bd}\n")
+                    print(f"\tTipo do id: {type(info_artigo_bd['id']) if info_artigo_bd else None}\n")
+
+                    artigo_ja_persistido = True if info_artigo_bd != None else False  
+                    dt_artigo = info_artigo_bd['dt_leitura'] if artigo_ja_persistido else None
                     print(f"\tData do artigo do BD: {dt_artigo} - Data de leitura no BD: {dt_artigo}\n")
+                    print(f"\tartigo_ja_persistido: {artigo_ja_persistido}\n")
+
                     #Artigos com data de hoje tambem sao considerados como novos. Temos que converter para string e comparar, para evitar problemas de comparacao.
                     esteArtigo['eh_novo'] = True if (dt_artigo == None or (datetime.now().strftime('%Y-%m-%d') == dt_artigo.strftime('%Y-%m-%d'))) else False
-                    if dt_artigo == None:
-                        db.fc_insere_artigo(conn, esteArtigo)  # Insere o artigo no banco de dados.
 
                     # Autor pode ser uma lista longa. Tratando nomes longos demais.
                     if(esteArtigo['autor'] != None and len(esteArtigo['autor']) > 70): 
@@ -236,6 +242,13 @@ def main():
                     fc_traduz_artigo(conn, esteArtigo) # Traduz o o artigo, usando o argostranslate. Usa cache para otimizar.
                     fc_trata_nome_autor(esteArtigo) # Autor pode ser uma lista longa. Tratando nomes de autor longos demais.
                     """
+                    print(f"\testeArtigo['eh_novo']: {esteArtigo['eh_novo']}\n")
+                    if artigo_ja_persistido == False:  # Se o artigo ainda não foi persistido no banco de dados, insere o artigo e a tradução no cache.
+                        result_insercao, id_artigo = db.fc_insere_artigo(conn, esteArtigo)  # Insere o artigo no banco de dados.
+                        if result_insercao == 'OK':
+                            esteArtigo['id'] = id_artigo  # Armazena o ID do artigo no dicionário do artigo, para futuras referências.
+                            print(f"\nArtigo inserido no banco de dados. Título: {esteArtigo['titulo']} - ID: {esteArtigo['id']}\n")
+                            #db.fc_insere_traducao_cache(conn, esteArtigo)  # Insere a tradução no cache do banco de dados, para futuras referências.
 
                     # armazenando o artigo na lista.
                     artigos.append(esteArtigo)

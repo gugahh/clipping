@@ -35,7 +35,7 @@ def fc_obtem_dados_artigo(conn, artigo):
     Retorna um dicionário com os dados do artigo ou None se não encontrado.
     O dicionário retornado tem a seguinte estrutura:
     {
-        "id_artigo": int,          # -> ARTI_DK
+        "id": int,          # -> ARTI_DK
         "dt_leitura": date         # -> ARTI_DT_LEITURA 
     }
     O criterio da busca e a URL do artigo, que deve ser única.
@@ -55,7 +55,7 @@ def fc_obtem_dados_artigo(conn, artigo):
                 )
             )
             resultado = cursor.fetchone()
-            return {"id_artigo": resultado[0], "dt_leitura": date.fromisoformat(resultado[1])}  if resultado else None
+            return {"id": resultado[0], "dt_leitura": date.fromisoformat(resultado[1])}  if resultado else None
     except Exception as e:
         # Erro: imprime no console + retorna "ERROR" + stack trace
         erro_completo = traceback.format_exc()
