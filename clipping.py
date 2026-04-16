@@ -160,22 +160,21 @@ def main():
                         esteArtigo['conteudo_traduzido']  = "(Sem Conteúdo)"
                         esteArtigo['eh_novo'] = True 
 
-                        # Autor pode ser uma lista longa. Tratando nomes longos demais.
-                        if(esteArtigo['autor'] != None and len(esteArtigo['autor']) > 70): 
-                            esteArtigo['autor'] = esteArtigo['autor'][:70] + "..."  # Trunca o nome do autor se for muito longo 
-                        else: 
-                            esteArtigo['autor'] = esteArtigo['autor'] if esteArtigo['autor'] != None else "Desconhecido"
-
                         if esteArtigo['conteudo'] != None:
                             # O conteúdo frequentemente tem uma parte truncada, seguida de um link para o artigo completo. Vamos tentar traduzir apenas a parte inicial, para evitar erros de tradução.
                             partes = esteArtigo['conteudo_traduzido'].split('…')
                             parte_traduzida = translate_en_to_pt(partes[0])  # Traduz apenas a primeira parte
                             esteArtigo['conteudo_traduzido'] = parte_traduzida + ('…' + partes[1] if len(partes) > 1 else '')  # Reconstroi o conteúdo com a parte traduzida
 
-                    #print(f"\testeArtigo['eh_novo']: {esteArtigo['eh_novo']}\n")
+                    # Artigos novos ou antigos: Autor pode ser uma lista longa. Tratando nomes longos demais.
+                    if(esteArtigo['autor'] != None and len(esteArtigo['autor']) > 70): 
+                        esteArtigo['autor'] = esteArtigo['autor'][:70] + "..."  # Trunca o nome do autor se for muito longo 
+                    else: 
+                        esteArtigo['autor'] = esteArtigo['autor'] if esteArtigo['autor'] != None else "Desconhecido"
 
-                    if esteArtigo['id'] == None:  # Se id eh None, o artigo ainda não foi persistido no banco de dados.
-                        result_insercao, id_artigo = db.fc_insere_artigo(conn, esteArtigo)  # Insere o artigo no banco de dados.
+                    # Se id eh None, o artigo ainda não foi persistido no banco de dados. Persistir.
+                    if esteArtigo['id'] == None: 
+                        result_insercao, id_artigo = db.fc_insere_artigo(conn, esteArtigo) 
                         if result_insercao == 'OK':
                             esteArtigo['id'] = id_artigo  # Armazena o ID do artigo no dicionário do artigo, para futuras referências.
                             #(f"\nArtigo inserido no banco de dados. Título: {esteArtigo['titulo']} - ID: {esteArtigo['id']}\n")
