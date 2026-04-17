@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timedelta
 import sqlite3
 import traceback
 
@@ -148,6 +148,30 @@ def fc_exclui_artigo(conn, id_artigo):
     except Exception as e:
         print(f"ERRO ao excluir Artigo (ID: {id_artigo}): {str(e)}")
         return f"ERRO ao excluir Artigo: {str(e)}"
+    
+def fc_exclui_artigos_antigos(conn, recuo):
+    """
+    Exclui todos os artigos na base com data igual ou anterior ao recuo;
+    Isso eh usado para otimizar a base no SQLite, mantendo-a pequena.
+    Parâmetros:
+        - recuo (int): Numero de dias de recuo.
+    """
+    if(recuo == None or recuo < 0):
+        msg = "ERRO. Parametros recuo deve ser um inteiro positivo."
+        print(msg)
+        raise msg
+
+    data_de_corte_str = (datetime.now() - timedelta(days=recuo)).strftime('%Y-%m-%d')
+
+    try:
+        with conn:
+            conn.execute("DELETE FROM ARTIGO WHERE ARTI_DT_LEITURA < ?", (data_de_corte_str,))
+            conn.commit()
+            return "OK"
+    except Exception as e:
+        print(f"ERRO ao excluir Artigos  antigos (Recuo: {recuo}): {str(e)}")
+        return f"ERRO ao excluir Artigo: {str(e)}"
+
 
 
 if __name__ == "__main__":
@@ -199,27 +223,11 @@ if __name__ == "__main__":
 
         #6. Teste de Exclusão: Verificacao da exclusao do artigo (deve retornar None)
         resultado = fc_obtem_artigo(conn, artigo_teste1)
-        print(f"\nTeste 6 (Verificação da Exclusão): Resultado: {resultado} - esperado: None")
+        print(f"\nTeste 6 (Verificação da Exclusão): Resultado: {resultado} - esperado: OK")
 
-        """
-        #7. Teste de Cache: Insere artigo no cache
-        trad_cache_test = {
-            "id_artigo": 28,  # id Real de artigo na base
-            "titulo_traduzido": "Título Traduzido",
-            "descricao_traduzida": "Descrição Traduzida",
-            "conteudo_traduzido": "Conteúdo Traduzido"
-        }
-        resultado = fc_insere_traducao_cache(conn, trad_cache_test)
-        print(f"\nTeste 7 (Inserção no Cache): {resultado} - Esperado: OK")
-
-        #8. Teste de Cache: Obtem artigo do cache de traducoes
-        resultado = fc_obtem_traducao_cache(conn, 28)
-        print(f"\nTeste 8 (Obtenção do Cache): {resultado} - Esperado: Dicionário com as traduções do artigo")
-
-        #9. Teste de Cache: Exclui artigo do cache de traducoes
-        result = fc_exclui_traducao_cache(conn, 28) 
-        print(f"\nTeste 9 (Exclusão do Cache): {result} - Esperado: OK")
-        """
+        #6. Teste de Exclusao de Artigos antigos 
+        resultado = fc_exclui_artigos_antigos(conn, 10)
+        print(f"\nTeste 6 (Verificação da Exclusão de art. antigos): Resultado: {resultado} - esperado: OK")
 
         close_connection(conn)
 

@@ -214,6 +214,12 @@ def main():
             #print(f"\nQuantidade de Artigos: {data['totalResults']}\n")
         else:
             print("Error:", data.get('message'))
+
+    # Tudo certo, artigos abertos no navegador.
+    # Agora podemos excluir artigos muito antigos na base (para otimizar o SqLite).
+    result_excl = db.fc_exclui_artigos_antigos(conn, 30)
+    if result_excl == 'OK':
+        print("\nArtigos com mais de 30 dias excluidos com sucesso.")
         
     conn.close()  # Fecha a conexão com o banco de dados SQLite, após processar todos os assuntos e artigos.
     print("\n")
